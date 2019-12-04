@@ -6,8 +6,13 @@ CLIENT_FILE="~/go/src/github.com/lucas-clemente/quic-go/example/client_benchmark
 SERVER_FILE="~/go/src/github.com/lucas-clemente/quic-go/example/main.go"
 CERT_PATH="~/go/src/github.com/lucas-clemente/quic-go/example/"
 
+<<<<<<< HEAD
 REMOTE_MACHINE_HOSTNAME="miniet@ip_address"
 #REMOTE_MACHINE_PORT="22"
+=======
+REMOTE_MACHINE_HOSTNAME="miniet@192.168.100.129"
+REMOTE_MACHINE_PORT="22"
+>>>>>>> 72db2e0d3e0c820627c8b660d5ebfae1b3094ac7
 
 # create topo, start server and client
 
@@ -37,6 +42,7 @@ CONTENT_DIR="~/test-data"
 
 def setup_exp_env():
     create_topo()
+<<<<<<< HEAD
     start_server(SERVER_PORT,CONTENT_DIR)
 
 
@@ -75,3 +81,7 @@ def run_test(testId,filename):
     #get results from client
     
 run_test(1,"Nature.html")
+=======
+    start_server("6121")
+    start_client("0.0.0.0","localhost","6121","Nature.html")
+>>>>>>> 72db2e0d3e0c820627c8b660d5ebfae1b3094ac7

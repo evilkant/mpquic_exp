@@ -23,8 +23,8 @@ def parseArgs(argv):
         print("Missing the topo...")
         sys.exit(1)
 
-class attributed_link():
-    def __self__(self,id,delay,queueSize,bandwidth,loss,back_up=False):
+class attributed_link:
+    def __init__(self,id,delay,queueSize,bandwidth,loss,back_up=False):
         self.id=id
         self.delay=delay
         self.queueSize=queueSize
@@ -42,7 +42,7 @@ class attributed_link():
         return d
 
 
-class MpParamTopo(paramFile):
+class MpParamTopo:
 
     # this object holds paramDic and linkAttrs
 
@@ -58,8 +58,14 @@ class MpParamTopo(paramFile):
     def __init__(self,paramFile):
         self.paramDic={}
         self.loadParamFile(paramFile)   #flesh out the paramDic
+
+        #for k,v in self.paramDic.items():
+        #    print("("+k+":"+v+")")
+
         self.linkAttrs=[]
         self.loadLinkAttrs()
+
+        #print(len(self.linkAttrs))
 
     def loadParamFile(self,paramFile):
         file=open(paramFile)
@@ -80,7 +86,7 @@ class MpParamTopo(paramFile):
                     self.paramDic[k]=v
             else:
                 print("Ignored line "+str(i) + "In file "+ paramFile)
-        f.close()
+        file.close()
 
     def loadLinkAttrs(self):
         i=0
@@ -124,24 +130,25 @@ class MpTopo:
     def __init__(self,topoBuilder,topoParam):
 
         self.topoBuilder=topoBuilder
-        self.topoParamObj=topoParam
+        self.topoParam=topoParam
 
-        self.client=self.addHost(clientName)
-        self.server=self.addHost(serverName)
-        self.router=self.addHost(routerName)
+        self.client=self.addHost(self.clientName)
+        self.server=self.addHost(self.serverName)
+        self.router=self.addHost(self.routerName)
         self.switch=[]
 
         for link in self.topoParam.linkAttrs:
             self.switch.append(self.addOneSwitchPerLink(link))
             self.addLink(self.client,self.switch[-1])
             self.addLink(self.switch[-1],self.router,**link.asDict())
-            self.addLink(self.router,self.server)
+
+        self.addLink(self.router,self.server)
 
     def addOneSwitchPerLink(self,link):
-        return self.addSwitch(switchNamePrefix+str(link.id))
+        return self.addSwitch(self.switchNamePrefix+str(link.id))
 
     def getAttributedLinks(self):
-        return self.topoParamObj.linkAttrs
+        return self.topoParam.linkAttrs
 
     def commandTo(self,who,cmd):
         return self.topoBuilder.commandTo(who,cmd)
@@ -149,16 +156,19 @@ class MpTopo:
     def getHost(self,who):
         return self.topoBuilder.getHost(who)
 
-    def addHost(self,host):
+    def addHost(self,who):
         return self.topoBuilder.addHost(who)
 
-    def addSwitch(self,host):
+    def addSwitch(self,who):
         return self.topoBuilder.addSwitch(who)
 
     def addLink(self,fromA,toB,**kwargs):
-        self.topoBuilder.addLink(formA,toB,**kwargs)
+        self.topoBuilder.addLink(fromA,toB,**kwargs)
 
     def getCLI(self):
+        self.topoBuilder.getCLI()
+
+    def startNetwork(self):
         self.topoBuilder.startNetwork()
 
     def stopNetwork(self):
@@ -167,63 +177,65 @@ class MpTopo:
 
 class MpConfig:
     def __init__(self,topo,param):
-        self.topo=topp
+        self.topo=topo
         self.param=param
 
     def configureNetwork(self):
         self.configureInterfaces()
         self.configureRoute()
 
-    def configureInterfaces():  #we did not configure switch though
+    def interfaceUpCommand(self,interfaceName,ip,subnet):
+        s="ifconfig "+ interfaceName+" "+ip+" netmask "+ subnet
+        return s
+
+    def configureInterfaces(self):  #we did not configure switch though
         self.client = self.topo.getHost(MpTopo.clientName)
-		self.server = self.topo.getHost(MpTopo.serverName)
-		self.router = self.topo.getHost(MpTopo.routerName)
+        self.server = self.topo.getHost(MpTopo.serverName)
+        self.router = self.topo.getHost(MpTopo.routerName)
 
-		i = 0
-		netmask = "255.255.255.0" #why do we need the netmask
+        i = 0
+        netmask = "255.255.255.0" #why do we need the netmask
 
-		links = self.topo.getAttributedLinks()
-		for l in self.topo.switch:
-			cmd = self.interfaceUpCommand(
-					self.getClientInterface(i),
-					self.getClientIP(i), netmask)
+        links = self.topo.getAttributedLinks()
+        for l in self.topo.switch:
+            cmd = self.interfaceUpCommand( self.getClientInterface(i), self.getClientIP(i), netmask)
 
-			self.topo.commandTo(self.client, cmd)
+            self.topo.commandTo(self.client, cmd)
 
-			clientIntfMac = self.client.intf(self.getClientInterface(i)).MAC()
+            clientIntfMac = self.client.intf(self.getClientInterface(i)).MAC()
 
-			self.topo.commandTo(self.router, "arp -s " + self.getClientIP(i) + " " + clientIntfMac)
+            self.topo.commandTo(self.router, "arp -s " + self.getClientIP(i) + " " + clientIntfMac)
 
 			#if(links[i].back_up):
 			#	cmd = self.interfaceBUPCommand(
 			#			self.getClientInterface(i))
 			#	self.topo.commandTo(self.client, cmd)
 
-			cmd = self.interfaceUpCommand(
+            cmd = self.interfaceUpCommand(
 					self.getRouterInterfaceSwitch(i),
 					self.getRouterIPSwitch(i), netmask)
 
-			self.topo.commandTo(self.router, cmd)
+            self.topo.commandTo(self.router, cmd)
 
-			routerIntfMac = self.router.intf(self.getRouterInterfaceSwitch(i)).MAC()
+            routerIntfMac = self.router.intf(self.getRouterInterfaceSwitch(i)).MAC()
 
             self.topo.commandTo(self.client, "arp -s " + self.getRouterIPSwitch(i) + " " + routerIntfMac)
 
             print(str(links[i]))
 
-			i = i + 1
+            i = i + 1
 
-		cmd = self.interfaceUpCommand(self.getRouterInterfaceServer(),
-				self.getRouterIPServer(), netmask)
-		self.topo.commandTo(self.router, cmd)
-		routerIntfMac = self.router.intf(self.getRouterInterfaceServer()).MAC()
-		self.topo.commandTo(self.server, "arp -s " + self.getRouterIPServer() + " " + routerIntfMac)
+        cmd = self.interfaceUpCommand(self.getRouterInterfaceServer(),
+        self.getRouterIPServer(), netmask)
+        self.topo.commandTo(self.router, cmd)
+        routerIntfMac = self.router.intf(self.getRouterInterfaceServer()).MAC()
+        self.topo.commandTo(self.server, "arp -s " + self.getRouterIPServer() + " " + routerIntfMac)
 
-		cmd = self.interfaceUpCommand(self.getServerInterface(),
+        cmd = self.interfaceUpCommand(self.getServerInterface(),
 				self.getServerIP(), netmask)
-		self.topo.commandTo(self.server, cmd)
-		serverIntfMac = self.server.intf(self.getServerInterface()).MAC()
-		self.topo.commandTo(self.router, "arp -s " + self.getServerIP() + " " + serverIntfMac)
+        self.topo.commandTo(self.server, cmd)
+        serverIntfMac = self.server.intf(self.getServerInterface()).MAC()
+        self.topo.commandTo(self.router, "arp -s " + self.getServerIP() + " " + serverIntfMac)
 
     def configureRoute(self):
         i=0
@@ -238,7 +250,7 @@ class MpConfig:
             )
             self.topo.commandTo(self.client,cmd)
 
-            cmd.self.addRouteDefaultCommand(self.getRouterIPSwitch(i),i)
+            self.addRouteDefaultCommand(self.getRouterIPSwitch(i),i)
             self.topo.commandTo(self.client,cmd)
             i=i+1
 
@@ -250,56 +262,89 @@ class MpConfig:
         self.topo.commandTo(self.server,cmd)
 
     def getClientIP(self,interfaceID):
-        lSubnet=self.param.getParam(MpParamTopo.LSUBNET)
-        clinetIP=lSubnet+str(interfaceID)+".1"
+        lSubnet=self.param.getParamFromTopoParamDic(MpParamTopo.LSUBNET)
+        clientIP=lSubnet+str(interfaceID)+".1"
         return clientIP
 
     def getClientSubnet(self,interfaceID):
-        lSubnet=self.param.getParam(MpParamTopo.LSUBNET)
+        lSubnet=self.param.getParamFromTopoParamDic(MpParamTopo.LSUBNET)
         clinetSubnet=lSubnet+str(interfaceID)+".0/24"
         return clinetSubnet
 
     def getRouterIPSwitch(self,interfaceID):
-        lSubnet=self.param.getParam(MpParamTopo.LSUBNET)
+        lSubnet=self.param.getParamFromTopoParamDic(MpParamTopo.LSUBNET)
         routerIP=lSubnet+str(interfaceID)+".2"
         return routerIP
 
     def getRouterIPServer(self):
-        rSubnet=self.param.getParam(MpParamTopo.RSUBNET)
-        routerIP=rSubent+"0.2"
+        rSubnet=self.param.getParamFromTopoParamDic(MpParamTopo.RSUBNET)
+        routerIP=rSubnet+"0.2"
         return routerIP
 
     def getServerIP(self):
-        rSubnet=self.param.getParam(MpParamTopo.RSUBNET)
+        rSubnet=self.param.getParamFromTopoParamDic(MpParamTopo.RSUBNET)
         serverIP=rSubnet+"0.1"
         return serverIP
 
     def getClientInterfaceCount(self):
 		return len(self.topo.switch)
 
-	def getRouterInterfaceServer(self):
-		return self.getRouterInterfaceSwitch(len(self.topo.switch))
+    def getRouterInterfaceServer(self):
+        return self.getRouterInterfaceSwitch(len(self.topo.switch))
 
-	def getClientInterface(self, interfaceID):
+    def getClientInterface(self, interfaceID):
 		return  MpTopo.clientName + "-eth" + str(interfaceID)
 
-	def getRouterInterfaceSwitch(self, interfaceID):
+    def getRouterInterfaceSwitch(self, interfaceID):
 		return  MpTopo.routerName + "-eth" + str(interfaceID)
 
-	def getServerInterface(self):
+    def getServerInterface(self):
 		return  MpTopo.serverName + "-eth0"
 
-	def getMidLeftName(self, id):
+    def getMidLeftName(self, id):
 		return MpTopo.switchNamePrefix + str(id)
 
-	def getMidRightName(self, id):
+    def getMidRightName(self, id):
 		return MpTopo.routerName
 
-	def getMidL2RInterface(self, id):
+    def getMidL2RInterface(self, id):
 		return self.getMidLeftName(id) + "-eth2"
 
-	def getMidR2LInterface(self, id):
+    def getMidR2LInterface(self, id):
 		return self.getMidRightName(id) + "-eth" + str(id)
+
+
+    def addRouteTableCommand(self, fromIP, id):
+		s = "ip rule add from " + fromIP + " table " + str(id + 1)
+		print(s)
+		return s
+
+    def addRouteScopeLinkCommand(self, network, interfaceName, id):
+		s = "ip route add " + network + " dev " + interfaceName + \
+				" scope link table " + str(id + 1)
+		print(s)
+		return s
+
+    def addRouteDefaultCommand(self, via, id):
+		s = "ip route add default via " + via + " table " + str(id + 1)
+		print(s)
+		return s
+
+    def addRouteDefaultGlobalCommand(self, via, interfaceName):
+		s = "ip route add default scope global nexthop via " + via + \
+				" dev " + interfaceName
+		print(s)
+		return s
+
+    def arpCommand(self, ip, mac):
+		s = "arp -s " + ip + " " + mac
+		print(s)
+		return s
+
+    def addRouteDefaultSimple(self, via):
+		s = "ip route add default via " + via
+		print(s)
+		return s
 
 #this class inherits from mininet class Topo
 class MininetBuilder(Topo):
@@ -311,7 +356,6 @@ class MininetBuilder(Topo):
         return who.cmd(cmd)
 
     def startNetwork(self):
-        #relly? topo=self?
         self.net=Mininet(topo=self,link=TCLink)
         self.net.start()
 
@@ -355,9 +399,10 @@ class MpXpRunner:
 
         #strat experiment
         #MpExperienceQUIC()
+        self.mpTopo.getCLI()
 
         #stop topo
-        self.mpTopo.stopNetwork()
+        #self.mpTopo.stopNetwork()
 
 
 if __name__=='__main__':
