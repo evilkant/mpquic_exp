@@ -6,7 +6,7 @@ CLIENT_FILE="~/go/src/github.com/lucas-clemente/quic-go/example/client_benchmark
 SERVER_FILE="~/go/src/github.com/lucas-clemente/quic-go/example/main.go"
 CERT_PATH="~/go/src/github.com/lucas-clemente/quic-go/example/"
 
-REMOTE_MACHINE_HOSTNAME="miniet@ip_address"
+REMOTE_MACHINE_HOSTNAME="miniet@192.168.100.129"
 REMOTE_MACHINE_PORT="22"
 
 # create topo, start server and client
@@ -28,5 +28,5 @@ def create_topo():
 def setup_exp_env():
     cmd = 'ssh -p ' + REMOTE_MACHINE_PORT +' ' + REMOTE_MACHINE_HOSTNAME
     create_topo()
-    start_server()
-    setup_client()
+    start_server("6121")
+    start_client("0.0.0.0","localhost","6121","Nature.html")
